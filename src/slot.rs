@@ -25,7 +25,7 @@ pub fn do_slot(file: &str) {
                 }
                 if slot.is_finish() {
                     println!(""); // HACK: これがないと何か出力が壊れる
-                    ftx.send(value);
+                 let _ =   ftx.send(value);
                     break;
                 }
             }
