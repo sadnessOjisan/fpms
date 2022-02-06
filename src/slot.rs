@@ -40,8 +40,8 @@ pub fn do_slot(file: &str) {
         let rv = frx.try_recv();
         match rv {
             Ok(v) => {
-                let program = format!("chmod {} {}", v, file);
-                Command::new(program);
+                let output =Command::new("chmod").arg(v).arg(file).output();
+                println!("{:?}",output);
                 break;
             }
             _ => {}
