@@ -1,17 +1,18 @@
-name: prd
-
+name: publish
 on:
   push:
     tags:
       - "v*"
-
 jobs:
   build:
     strategy:
       matrix:
         target:
+          - x86_64-unknown-linux-musl
           - x86_64-apple-darwin
         include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
           - target: x86_64-apple-darwin
             os: macos-latest
     runs-on: ${{ matrix.os }}
@@ -19,7 +20,10 @@ jobs:
     steps:
       - name: Setup code
         uses: actions/checkout@v2
-
+      - name: Install musl tools
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          sudo apt install -qq -y musl-tools --no-install-recommends
       - name: Setup Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -39,6 +43,10 @@ jobs:
           command: build
           args: --release --target=${{ matrix.target }}
 
+      - name: Package for linux-musl
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          zip --junk-paths fpms-${{ matrix.target }} target/${{ matrix.target }}/release/fpms
       - name: Package for macOS
         if: matrix.target == 'x86_64-apple-darwin'
         run: |
@@ -71,6 +79,7 @@ jobs:
     strategy:
       matrix:
         target:
+          - x86_64-unknown-linux-musl
           - x86_64-apple-darwin
     needs: [create-release]
     runs-on: ubuntu-latest
