@@ -6,7 +6,7 @@ pub struct NumState {
     is_stoped: bool,
 }
 
-pub fn do_slot() {
+pub fn do_slot(file: &str) {
     let mut slot = Slot::new();
     let (tx, rx) = channel::<bool>();
     let (ftx, frx) = channel();
@@ -24,7 +24,7 @@ pub fn do_slot() {
                     slot.stop();
                 }
                 if slot.is_finish() {
-                    println!("");
+                    println!(""); // HACK: これがないと何か出力が壊れる
                     ftx.send(value);
                     break;
                 }
@@ -40,7 +40,7 @@ pub fn do_slot() {
         let rv = frx.try_recv();
         match rv {
             Ok(v) => {
-                let program = format!("chmod {}", v);
+                let program = format!("chmod {} {}", v, file);
                 Command::new(program);
                 break;
             }
