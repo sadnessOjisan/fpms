@@ -1,31 +1,34 @@
-use std::{
-    io::stdin,
-    sync::{mpsc::channel, Arc, Mutex},
-    thread::spawn,
-};
+use std::{io::stdin, process::Command, sync::mpsc::channel, thread::spawn};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct NumState {
     pub num: u8,
     is_stoped: bool,
 }
 
 pub fn do_slot() {
-    let slot = Arc::new(Mutex::new(Slot::new()));
-    let loop_slot = Arc::clone(&slot);
+    let mut slot = Slot::new();
     let (tx, rx) = channel::<bool>();
+    let (ftx, frx) = channel();
     spawn(move || loop {
         let received = rx.try_recv();
-        let res = slot.try_lock();
-        match res {
-            Ok(mut slot) => match received {
-                Ok(should_stop) => {
-                    if should_stop {
-                        slot.stop();
-                    }
+        slot.spin();
+        let value = format!(
+            "{}{}{}",
+            slot.output.0.num, slot.output.1.num, slot.output.2.num
+        );
+        print!("\r\x1b[?25lchmod {}", value);
+        match received {
+            Ok(should_stop) => {
+                if should_stop {
+                    slot.stop();
                 }
-                Err(_) => {}
-            },
+                if slot.is_finish() {
+                    println!("");
+                    ftx.send(value);
+                    break;
+                }
+            }
             Err(_) => {}
         }
     });
@@ -34,21 +37,19 @@ pub fn do_slot() {
         let mut guess = String::new();
         stdin().read_line(&mut guess).expect("Failed to read line.");
         let _ = tx.send(true);
-        let res = loop_slot.try_lock();
-        match res {
-            Ok(slot) => {
-                print!(
-                    "\r\x1b[?25lchmod {}{}{}",
-                    slot.output.0.num, slot.output.1.num, slot.output.2.num
-                );
-                println!("{:?}", slot);
+        let rv = frx.try_recv();
+        match rv {
+            Ok(v) => {
+                let program = format!("chmod {}", v);
+                Command::new(program);
+                break;
             }
-            Err(_) => {}
+            _ => {}
         }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Slot {
     pub output: (NumState, NumState, NumState),
 }
